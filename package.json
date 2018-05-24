@@ -36,6 +36,7 @@
     "@types/node": "8.0.34",
     "@types/papaparse": "4.1.33",
     "@types/serve-static": "1.7.32",
+    "7zip-bin-win": "2.2.0",
     "autoprefixer": "7.1.5",
     "babel-eslint": "8.2.2",
     "babel-plugin-transform-class-properties": "6.24.1",
