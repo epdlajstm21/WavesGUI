@@ -15,13 +15,26 @@ md-dialog.settings-modal {
     display: none;
   }
 
+  w-select {
+    &.with-scroll {
+      .select-list {
+        overflow-y: auto;
+        max-height: 140px;
+      }
+    }
+
+    .select:not(.expanded) .title {
+      border: 1px solid transparent;
+    }
+  }
+
   w-responsive-menu {
     width: 199px;
-    height: calc(100% ~' + 20px');
+    height: calc(100% ~' + 30px');
     position: absolute;
     font-size: 15px;
     left: -40px;
-    top: -20px;
+    top: -30px;
     border-right: 1px solid @color-basic-200;
 
     w-responsive-menu-item {
@@ -73,7 +86,9 @@ md-dialog.settings-modal {
       &.active {
         background-color: @color-submit-400;
 
-        &:hover {background-color: @color-submit-400;}
+        &:hover {
+          background-color: @color-submit-400;
+        }
 
         .menu-item {
           color: @color-white;
@@ -92,7 +107,6 @@ md-dialog.settings-modal {
           }
         }
       }
-
     }
   }
 
@@ -113,6 +127,11 @@ md-dialog.settings-modal {
       .label {
         line-height: 1.8em;
       }
+
+      .settings-copy {
+        display: inline-block;
+        float: right;
+      }
     }
   }
 
@@ -120,6 +139,7 @@ md-dialog.settings-modal {
     display: flex;
     justify-content: space-between;
     width: 100%;
+    align-items: center;
   }
 
   .row-style {
@@ -134,24 +154,24 @@ md-dialog.settings-modal {
     &.unit-checkbox {
       // TODO : make it work properly without magic
       padding-top: 5px;
+
       w-checkbox-submit {
+        flex-grow: 0;
         display: block;
         margin-right: 18px;
         padding-right: 18px;
+        align-self: flex-start;
+      }
+
+      label {
+        flex-grow: 1;
       }
     }
 
-    &.unit-language {
+    &.unit-select {
       // TODO : align to the middle without magic
       padding: 5px 0;
-      & > div {
-        line-height: 2.8em;
-      }
     }
-  }
-
-  .settings-copy {
-    display: none;
   }
 
   .info {
@@ -206,19 +226,26 @@ md-dialog.settings-modal {
 }
 
 @media screen and (max-width: 767px) {
-
   md-dialog.settings-modal {
-    width: calc(100% ~' - 20px');
-    min-width: 340px;
-    max-width: 400px;
-    height: 82vh;
-    max-height: 82vh;
-    left: 50%;
-    transform-origin: center;
-    transition: .3s;
+    min-width: 360px;
+    max-width: 420px;
+
+    md-toolbar {
+      padding: 20px;
+
+      .icon-close {
+        right: 20px;
+      }
+    }
+
+    md-dialog-content {
+      padding: 20px 20px 0;
+      height: 100%;
+    }
 
     w-responsive-menu {
-      width: calc(100% ~' + 40px');
+      width: calc(100% ~'+ 40px');
+      min-width: 360px;
       border-bottom: 1px solid @color-accent-50;
       left: 0;
       top: 0;
@@ -233,24 +260,24 @@ md-dialog.settings-modal {
 
         &::before {
           background-color: @color-submit-400;
-          content:'';
-          display:block;
+          content: '';
+          display: block;
           position: absolute;
-          top:0;
-          left:0;
+          top: 0;
+          left: 0;
           height: @mobile-settings-item-height;
           width: 100%;
         }
 
         w-responsive-menu-item {
           order: 2;
-          opacity:0;
+          opacity: 0;
           height: 0;
         }
 
         w-responsive-menu-item.active {
           order: 0;
-          opacity:1;
+          opacity: 1;
           height: @mobile-settings-item-height;
         }
 
@@ -261,7 +288,7 @@ md-dialog.settings-modal {
         &.active {
           height: auto;
           w-responsive-menu-item {
-            opacity:1;
+            opacity: 1;
             height: @mobile-settings-item-height;
           }
         }
@@ -293,6 +320,10 @@ md-dialog.settings-modal {
       }
     }
 
+    .modal-content {
+      min-height: 360px;
+    }
+
     .settings-modal {
       flex-direction: column;
 
@@ -311,10 +342,16 @@ md-dialog.settings-modal {
         }
       }
 
-      .settings-copy {
-        display: inline-block;
-        float: right;
-      }
     }
+
   }
+}
+
+@media screen and (max-width: 540px) {
+
+  md-dialog.settings-modal {
+    max-width: 100%;
+    min-width: 100%;
+  }
+
 }

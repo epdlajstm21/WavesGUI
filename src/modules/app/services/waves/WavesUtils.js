@@ -13,8 +13,7 @@
 
             @decorators.cachable(5)
             searchAsset(userInput) {
-                return fetch(`${WavesApp.network.api}/assets/search/${userInput}`)
-                    .then(utils.onFetch);
+                return fetch(`${WavesApp.network.api}/assets/search/${userInput}`);
             }
 
             /**
@@ -31,7 +30,7 @@
                 const to = WavesUtils.toId(assetTo);
 
                 if (from === to) {
-                    return utils.when(new BigNumber(1));
+                    return Promise.resolve(new BigNumber(1));
                 }
 
                 if (date) {
@@ -58,8 +57,8 @@
              */
             getRateApi(assetFrom, assetTo, date) {
                 return utils.whenAll([
-                    assets.info(WavesUtils.toId(assetFrom)),
-                    assets.info(WavesUtils.toId(assetTo)),
+                    assets.getExtendedAsset(WavesUtils.toId(assetFrom)),
+                    assets.getExtendedAsset(WavesUtils.toId(assetTo)),
                     this.getRate(assetFrom, assetTo, date)
                 ])
                     .then(([from, to, rate]) => {
@@ -74,7 +73,7 @@
              * @param {Date|number|Moment} [to]
              * @return {Promise<{rate: number, timestamp: Date}[]>}
              */
-            @decorators.cachable(10)
+            @decorators.cachable(60)
             getRateHistory(assetFrom, assetTo, from, to) {
                 const idFrom = WavesUtils.toId(assetFrom);
                 const idTo = WavesUtils.toId(assetTo);
@@ -82,7 +81,7 @@
                 to = to || Date.now();
 
                 if (idFrom === idTo) {
-                    return utils.when([]);
+                    return Promise.resolve([]);
                 } else if (idFrom === wavesId || idTo === wavesId) {
                     return this._getRateHistory(idFrom, idTo, utils.moment(from), utils.moment(to));
                 } else {
@@ -102,7 +101,7 @@
 
                             return from.reduce((result, item) => {
                                 if (hash[item.timestamp.valueOf()]) {
-                                    item.rate = item.rate / hash[item.timestamp.valueOf()].rate;
+                                    item.rate /= hash[item.timestamp.valueOf()].rate;
                                     result.push(item);
                                 }
                                 return result;
@@ -168,7 +167,6 @@
                     .then((pair) => {
                         const interval = this._getChangeByInterval(utils.moment().add().day(-1));
                         return fetch(`${WavesApp.network.datafeed}/api/candles/${pair.toString()}/${interval}`)
-                            .then(utils.onFetch)
                             .then((data) => {
 
                                 if (!data || data.status === 'error') {
@@ -204,17 +202,23 @@
              */
             _getRate(fromId, toId) {
 
+                const calculateCurrentRate = function (trades) {
+                    return (
+                        trades
+                            .reduce((result, item) => {
+                                return result.add(new BigNumber(item.price));
+                            }, new BigNumber(0))
+                            .div(trades.length)
+                    );
+                };
+
                 const currentRate = (trades) => {
-                    return trades && trades.length ? trades.reduce((result, item) => {
-                        return result.add(new BigNumber(item.price));
-                    }, new BigNumber(0))
-                        .div(trades.length) : new BigNumber(0);
+                    return trades && trades.length ? calculateCurrentRate(trades) : new BigNumber(0);
                 };
 
                 return Waves.AssetPair.get(fromId, toId)
                     .then((pair) => {
                         return fetch(`${WavesApp.network.datafeed}/api/trades/${pair.toString()}/5`)
-                            .then(utils.onFetch)
                             .then(currentRate)
                             .then((rate) => {
                                 if (fromId !== pair.priceAsset.id) {
@@ -240,7 +244,6 @@
                 return Waves.AssetPair.get(fromId, toId)
                     .then((pair) => {
                         return fetch(`${WavesApp.network.datafeed}/api/candles/${pair.toString()}/${interval}`)
-                            .then(utils.onFetch)
                             .then((list) => {
 
                                 if (!list || !list.length) {
@@ -249,7 +252,7 @@
 
                                 return list.reduce((result, item) => {
                                     const close = Number(item.close);
-                                    let rate = fromId !== pair.priceAsset.id ? close : 1 / close;
+                                    const rate = fromId !== pair.priceAsset.id ? close : 1 / close;
 
                                     if (close !== 0) {
                                         result.push({

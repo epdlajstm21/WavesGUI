@@ -10,7 +10,9 @@
         [WavesApp.defaultAssets.ZEC]: '/img/assets/zec.svg',
         [WavesApp.defaultAssets.EUR]: '/img/assets/euro.svg',
         [WavesApp.defaultAssets.USD]: '/img/assets/usd.svg',
+        [WavesApp.defaultAssets.DASH]: '/img/assets/dash.svg',
         [WavesApp.defaultAssets.BCH]: '/img/assets/bitcoin-cash.svg',
+        [WavesApp.defaultAssets.TRY]: '/img/assets/try.svg',
         [WavesApp.otherAssetsWithIcons.EFYT]: '/img/assets/efyt.svg',
         [WavesApp.otherAssetsWithIcons.WNET]: '/img/assets/wnet.svg'
     };
@@ -90,7 +92,7 @@
              */
             _addLogo() {
                 if (this.assetId) {
-                    waves.node.assets.info(this.assetId)
+                    waves.node.assets.getExtendedAsset(this.assetId)
                         .then((asset) => {
                             if (ASSET_IMAGES_MAP[asset.id]) {
                                 utils.loadImage(ASSET_IMAGES_MAP[asset.id])
@@ -122,7 +124,7 @@
                     .text(letter)
                     .css({
                         'background-color': color,
-                        'font-size': `${fontSize}px`,
+                        'font-size': `${fontSize}px`
                     });
             }
 

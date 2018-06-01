@@ -6,7 +6,7 @@
     /**
      *
      * @param Base
-     * @param $scope
+     * @param {$rootScope.Scope} $scope
      * @param $filter
      * @param {ExplorerLinks} explorerLinks
      * @param {BaseAssetService} baseAssetService
@@ -34,6 +34,7 @@
                 this.datetime = $filter('date')(transaction.timestamp, 'dd.MM.yyyy, HH:mm');
                 this.shownAddress = transaction.shownAddress;
                 this.type = transaction.type;
+                this.numberOfRecipients = transaction.numberOfRecipients;
 
                 this.explorerLink = explorerLinks.getTxLink(transaction.id);
 
@@ -42,6 +43,7 @@
                     baseAssetService.convertToBaseAsset(amount)
                         .then((baseMoney) => {
                             this.mirrorBalance = baseMoney;
+                            $scope.$digest();
                         });
                 }
 

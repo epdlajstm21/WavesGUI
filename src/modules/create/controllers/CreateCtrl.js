@@ -10,8 +10,7 @@
      * @param {ISeedService} seedService
      * @return {CreateCtrl}
      */
-    const controller = function (Base, $scope, $q, $mdDialog, $timeout, user, modalManager,
-                                 seedService) {
+    const controller = function (Base, $scope, $q, $mdDialog, $timeout, user, modalManager, seedService) {
 
         const PATH = 'modules/create/templates';
         const ORDER_LIST = [
@@ -28,6 +27,7 @@
 
                 this.stepIndex = 0;
                 this.password = '';
+                this.name = '';
                 this.seed = '';
                 this.address = '';
                 this.seedList = [];
@@ -139,6 +139,7 @@
 
                 return user.create({
                     address: this.address,
+                    name: this.name,
                     password: this.password,
                     encryptedSeed,
                     publicKey

@@ -1,16 +1,16 @@
+/* global tsApiValidator */
 (function () {
     'use strict';
 
     /**
      * @param {Base} Base
-     * @param {Scope} $scope
+     * @param {$rootScope.Scope} $scope
      * @param {Waves} waves
      * @param {DataFeed} dataFeed
-     * @param {function} createPoll
-     * @param {app.utils} utils
+     * @param {IPollCreate} createPoll
      * @return {TradeHistory}
      */
-    const controller = function (Base, $scope, waves, dataFeed, createPoll, utils) {
+    const controller = function (Base, $scope, waves, dataFeed, createPoll) {
 
         class TradeHistory extends Base {
 
@@ -53,7 +53,7 @@
                 /**
                  * @type {Poll}
                  */
-                this.poll = createPoll(this, this._getTradeHistory, 'orders', 2000);
+                this.poll = createPoll(this, this._getTradeHistory, 'orders', 2000, { $scope });
                 this.observe('_assetIdPair', this._onChangeAssets);
 
                 this._onChangeAssets();
@@ -73,6 +73,7 @@
                 Waves.AssetPair.get(this._assetIdPair.amount, this._assetIdPair.price).then((pair) => {
                     this.priceAsset = pair.priceAsset;
                     this.amountAsset = pair.amountAsset;
+                    $scope.$digest();
                 });
             }
 

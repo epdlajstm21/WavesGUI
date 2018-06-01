@@ -1,3 +1,4 @@
+/* eslint-disable default-case,no-unused-vars */
 (function () {
     'use strict';
 
@@ -45,32 +46,28 @@
             @toBigNumberArgs
             @notNullArgs
             precision(inputValue, precision) {
-                const [int, dec] = inputValue.toFixed().split('.'); //TODO add separator
-                return dec ? dec.length <= precision : true; //TODO remove empty zero
+                const [int, dec] = inputValue.toFixed().split('.'); // TODO add separator
+                return dec ? dec.length <= precision : true; // TODO remove empty zero
             }
 
             @notNullArgs
             byteLt(inputValue, bytes) {
-                const blob = new Blob([inputValue], { type: 'text/html' });
-                return blob.size < Number(bytes);
+                return this.getByteFromString(inputValue) < Number(bytes);
             }
 
             @notNullArgs
             byteLte(inputValue, bytes) {
-                const blob = new Blob([inputValue], { type: 'text/html' });
-                return blob.size <= Number(bytes);
+                return this.getByteFromString(inputValue) <= Number(bytes);
             }
 
             @notNullArgs
             byteGt(inputValue, bytes) {
-                const blob = new Blob([inputValue], { type: 'text/html' });
-                return blob.size > Number(bytes);
+                return this.getByteFromString(inputValue) > Number(bytes);
             }
 
             @notNullArgs
             byteGte(inputValue, bytes) {
-                const blob = new Blob([inputValue], { type: 'text/html' });
-                return blob.size >= Number(bytes);
+                return this.getByteFromString(inputValue) >= Number(bytes);
             }
 
             @notNullArgs
@@ -82,6 +79,11 @@
                 return this.outerBlockchains(address, assetId) ? true : this.wavesAddress(address);
             }
 
+            /**
+             * @param {string} address
+             * @param {'no-self'} [value]
+             * @return {Promise<boolean>}
+             */
             wavesAddress(address, value) {
                 return utils.whenAll([
                     this.alias(address, value),
@@ -105,7 +107,12 @@
                 return outerChain.isValidAddress(address);
             }
 
-            alias(address, value = '') {
+            /**
+             * @param {string} address
+             * @param {'no-self'} [value]
+             * @return {boolean|Promise}
+             */
+            alias(address, value = undefined) {
                 if (!address) {
                     return true;
                 }
@@ -120,13 +127,11 @@
 
                 if (!waves.node.aliases.validate(address)) {
                     return false;
+                } else if (value && value === 'no-self') {
+                    return !waves.node.aliases.getAliasList().includes(address) &&
+                        waves.node.aliases.getAddress(address);
                 } else {
-                    if (value && value === 'no-self') {
-                        return !waves.node.aliases.getAliasList().includes(address) &&
-                            waves.node.aliases.getAddress(address);
-                    } else {
-                        return waves.node.aliases.getAddress(address);
-                    }
+                    return waves.node.aliases.getAddress(address);
                 }
             }
 
@@ -143,13 +148,17 @@
                     return false;
                 }
 
+                if (!waves.node.isValidAddress(address)) {
+                    return false;
+                }
+
                 if (value && value === 'no-self' && address === user.address) {
                     return false;
                 }
 
-                return Waves.API.Node.v1.addresses.balance(address)
+                return waves.node.assets.getBalanceByAddress(address)
                     .then((data) => {
-                        if (data && data.balance != null) {
+                        if (data && data.available != null) {
                             return $q.resolve();
                         } else {
                             return $q.reject();
@@ -157,6 +166,10 @@
                     }, (e) => {
                         return $q.reject(e.message);
                     });
+            }
+
+            getByteFromString(str) {
+                return new Blob([str], { type: 'text/html' }).size;
             }
 
             static toBigNumber(item) {

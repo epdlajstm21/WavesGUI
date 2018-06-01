@@ -3,11 +3,9 @@
 
     /**
      * @param {BaseNodeComponent} BaseNodeComponent
-     * @param {User} user
-     * @param {app.utils} utils
      * @return {Aliases}
      */
-    const factory = function (BaseNodeComponent, user, utils) {
+    const factory = function (BaseNodeComponent) {
 
         const AVAILABLE_CHARS = '-.0123456789@_abcdefghijklmnopqrstuvwxyz';
 
@@ -24,7 +22,8 @@
              * @return {Promise<string>}
              */
             getAddress(alias) {
-                return Waves.API.Node.v2.aliases.getAddress(alias).then(({ address }) => address);
+                return fetch(`${this.network.node}/alias/by-alias/${alias}`)
+                    .then(({ address }) => address);
             }
 
             /**
@@ -36,14 +35,6 @@
             }
 
             /**
-             * Get list of min values fee
-             * @return {Promise<Money[]>}
-             */
-            fee() {
-                return this._feeList('createAlias');
-            }
-
-            /**
              * Create alias (transaction)
              * @param {string} alias
              * @param {string} keyPair
@@ -51,7 +42,7 @@
              * @return Promise<ITransaction>
              */
             createAlias({ alias, fee, keyPair }) {
-                return this.getFee('createAlias', fee).then((fee) => {
+                return this.getFee({ type: WavesApp.TRANSACTION_TYPES.NODE.CREATE_ALIAS, fee }).then((fee) => {
                     return Waves.API.Node.v1.aliases.createAlias({
                         fee: fee.toCoins(),
                         feeAssetId: fee.asset.id,
@@ -65,9 +56,7 @@
                 // TODO : replace with waves-api method when it is implemented
                 return alias.length >= 4 &&
                     alias.length <= WavesApp.maxAliasLength &&
-                    alias.split('').some((char) => {
-                        return AVAILABLE_CHARS.indexOf(char) !== -1;
-                    });
+                    alias.split('').every((char) => AVAILABLE_CHARS.includes(char));
             }
 
         }
@@ -75,7 +64,7 @@
         return new Aliases();
     };
 
-    factory.$inject = ['BaseNodeComponent', 'user', 'utils'];
+    factory.$inject = ['BaseNodeComponent'];
 
     angular.module('app').factory('aliases', factory);
 })();

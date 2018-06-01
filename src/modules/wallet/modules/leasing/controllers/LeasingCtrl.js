@@ -3,16 +3,20 @@
 
     /**
      * @param Base
-     * @param $scope
+     * @param {$rootScope.Scope} $scope
      * @param {app.utils} utils
      * @param {Waves} waves
      * @param {ModalManager} modalManager
-     * @param createPoll
+     * @param {IPollCreate} createPoll
      * @return {LeasingCtrl}
      */
     const controller = function (Base, $scope, utils, waves, modalManager, createPoll) {
 
         class LeasingCtrl extends Base {
+
+            get pendingAllLeasing() {
+                return !this.pending && this.allActiveLeasing == null;
+            }
 
             constructor() {
                 super($scope);
@@ -51,6 +55,11 @@
                  * @type {ITransaction[]}
                  */
                 this.transactions = [];
+
+                /**
+                 * @type {string}
+                 */
+                this.nodeListLink = WavesApp.network.nodeList;
 
                 waves.node.transactions.getActiveLeasingTx().then((txList) => {
                     this.allActiveLeasing = txList;
@@ -98,6 +107,7 @@
                     { id: 'leased', value: leasedOut },
                     { id: 'leasedIn', value: leasedIn }
                 ];
+                $scope.$digest();
             }
 
             /**
@@ -112,6 +122,7 @@
                 };
 
                 this.txList = txList.filter(({ type }) => AVAILABLE_TYPES_HASH[type]);
+                $scope.$digest();
             }
 
             /**

@@ -46,8 +46,19 @@ w-button {
       justify-content: center;
       text-align: center;
       padding: 0;
+    }
+
+    &.big {
       height: @height-control-big;
       font-size: @font-size-control-big;
+      font-family: @font-roboto-medium;
+    }
+
+    @media screen and (max-width: 768px) {
+      &.big {
+        height: @height-control-big-responsive;
+        font-size: @font-size-control-big-responsive;
+      }
     }
 
     &:not(.transparent) {
@@ -127,6 +138,7 @@ w-button {
       color: @color-basic-500;
       font-family: @font-roboto-medium;
       height: 42px;
+      text-transform: capitalize;
 
       &:hover, &.hover {
         border-color: @color-basic-500;
@@ -159,7 +171,7 @@ w-button {
     }
 
     w-loader {
-      display:block;
+      display: block;
       margin: 0 auto;
 
       .loader-dots() {
@@ -216,6 +228,7 @@ w-button {
 /* Mac button text centering fix */
 w-button > button {
   w-i18n,
+  div.button__content,
   div.full-width,
   div.full-width * {
     width: 100%;

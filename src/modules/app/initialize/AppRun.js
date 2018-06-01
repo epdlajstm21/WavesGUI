@@ -1,5 +1,9 @@
+/* eslint-disable no-console */
+/* global openInBrowser, BigNumber */
 (function () {
     'use strict';
+
+    const tsUtils = require('ts-utils');
 
     const PROGRESS_MAP = {
         RUN_SCRIPT: 10,
@@ -34,70 +38,21 @@
     LOADER.addProgress(PROGRESS_MAP.RUN_SCRIPT);
 
     /**
-     * @param $rootScope
+     * @param {$rootScope.Scope} $rootScope
      * @param {User} user
      * @param {app.utils} utils
      * @param $state
      * @param {State} state
      * @param {ModalManager} modalManager
+     * @param {Storage} storage
+     * @param {INotification} notification
+     * @param {app.utils.decorators} decorators
+     * @param {Waves} waves
+     * @param {ModalRouter} ModalRouter
      * @return {AppRun}
      */
-    const run = function ($rootScope, utils, user, $state, state, modalManager, storage) {
-
-        class ExtendedAsset extends Waves.Asset {
-
-            constructor(props) {
-                super({
-                    ...props,
-                    name: WavesApp.remappedAssetNames[props.id] || props.name
-                    // ID, name, precision and description are added here
-                });
-
-                this.reissuable = props.reissuable;
-                this.timestamp = props.timestamp;
-                this.sender = props.sender;
-                this.height = props.height;
-
-                const divider = new BigNumber(10).pow(this.precision);
-                this.quantity = new BigNumber(props.quantity).div(divider);
-
-                this.ticker = props.ticker || '';
-                this.sign = props.sign || '';
-                this.displayName = props.ticker || props.name;
-            }
-
-        }
-
-        function remapAssetProps(props) {
-            props.precision = props.decimals;
-            delete props.decimals;
-            return props;
-        }
-
-        const cache = Object.create(null);
-        Waves.config.set({
-            assetFactory(props) {
-
-                if (cache[props.id]) {
-                    return cache[props.id];
-                }
-
-                const promise = fetch(`${WavesApp.network.api}/assets/${props.id}`)
-                    .then(utils.onFetch)
-                    .then((fullProps) => new ExtendedAsset(remapAssetProps(fullProps)))
-                    .catch(() => {
-                        return Waves.API.Node.v1.transactions.get(props.id)
-                            .then((partialProps) => new ExtendedAsset(remapAssetProps(partialProps)));
-                    });
-
-                cache[props.id] = promise;
-                cache[props.id].catch(() => {
-                    delete cache[props.id];
-                });
-
-                return cache[props.id];
-            }
-        });
+    const run = function ($rootScope, utils, user, $state, state, modalManager, storage,
+                          notification, decorators, waves, ModalRouter) {
 
         user.onLogin().then(() => {
             Waves.config.set({
@@ -106,9 +61,23 @@
             });
         });
 
+
+        const proxy = 'https://github-proxy.wvservices.com/wavesplatform/WavesGUI/client-907-fix-portfolio/scam.csv';
+        const origin = 'https://raw.githubusercontent.com/wavesplatform/WavesGUI/client-907-fix-portfolio/scam.csv';
+        const papa = require('papaparse');
+
+        fetch(proxy)
+            .catch(() => fetch(origin))
+            .then((text) => {
+                papa.parse(text).data.forEach(([id]) => {
+                    WavesApp.scam[id] = true;
+                });
+            });
+
         class AppRun {
 
             constructor() {
+                const identityImg = require('identity-img');
 
                 LOADER.addProgress(PROGRESS_MAP.APP_RUN);
 
@@ -117,8 +86,16 @@
                  * @type {Array<string>}
                  */
                 this.activeClasses = [];
+                /**
+                 * @type {ModalRouter}
+                 * @private
+                 */
+                this._modalRouter = new ModalRouter();
+                /**
+                 * @type {function}
+                 * @private
+                 */
                 this._changeLangHandler = null;
-
                 /**
                  * Configure library generation avatar by address
                  */
@@ -128,7 +105,9 @@
                 this._stopLoader();
                 this._initializeLogin();
                 this._initializeOutLinks();
+                waves.node.assets.initializeAssetFactory();
 
+                $rootScope.WavesApp = WavesApp;
             }
 
             /**
@@ -153,6 +132,9 @@
                 }
             }
 
+            /**
+             * @private
+             */
             _listenChangeLanguage() {
                 this._changeLangHandler = () => {
                     localStorage.setItem('lng', i18next.language);
@@ -160,6 +142,9 @@
                 i18next.on('languageChanged', this._changeLangHandler);
             }
 
+            /**
+             * @private
+             */
             _stopListenChangeLanguage() {
                 i18next.off('languageChanged', this._changeLangHandler);
                 this._changeLangHandler = null;
@@ -170,8 +155,8 @@
              */
             _initializeLogin() {
 
-                storage.onReady().then((isNew) => {
-                    if (isNew) {
+                storage.onReady().then((oldVersion) => {
+                    if (!oldVersion) {
                         modalManager.showTutorialModals();
                     }
                 });
@@ -196,18 +181,15 @@
                                 $state.go(user.getActiveState('wallet'));
                             }
 
-                            const termsAccepted = user.getSetting('termsAccepted');
                             i18next.changeLanguage(user.getSetting('lng'));
 
-                            if (!termsAccepted) {
-                                modalManager.showTermsAccept(user).then(() => {
-                                    if (user.getSetting('shareAnalytics')) {
-                                        analytics.activate();
-                                    }
+                            this._initializeTermsAccepted()
+                                .then(() => {
+                                    this._initializeBackupWarning();
+                                })
+                                .then(() => {
+                                    this._modalRouter.initialize();
                                 });
-                            } else if (user.getSetting('shareAnalytics')) {
-                                analytics.activate();
-                            }
 
                             $rootScope.$on('$stateChangeStart', (event, current) => {
                                 if (START_STATES.indexOf(current.name) !== -1) {
@@ -221,11 +203,88 @@
             }
 
             /**
+             * @return Promise
+             * @private
+             */
+            _initializeTermsAccepted() {
+                if (!user.getSetting('termsAccepted')) {
+                    return modalManager.showTermsAccept(user).then(() => {
+                        if (user.getSetting('shareAnalytics')) {
+                            analytics.activate();
+                        }
+                    })
+                        .catch(() => false);
+                } else if (user.getSetting('shareAnalytics')) {
+                    analytics.activate();
+                }
+                return Promise.resolve();
+            }
+
+            /**
+             * @param {object} [scope]
+             * @param {boolean} scope.closeByModal
+             * @private
+             */
+            @decorators.scope({ closeByModal: false })
+            _initializeBackupWarning(scope) {
+                if (!user.getSetting('hasBackup')) {
+
+                    const id = tsUtils.uniqueId('n');
+
+                    const changeModalsHandler = (modal) => {
+
+                        scope.closeByModal = true;
+                        notification.remove(id);
+                        scope.closeByModal = false;
+
+                        modal.catch(() => null)
+                            .then(() => {
+                                if (!user.getSetting('hasBackup')) {
+                                    this._initializeBackupWarning();
+                                }
+                            });
+                    };
+
+                    modalManager.openModal.once(changeModalsHandler);
+
+                    notification.error({
+                        id,
+                        ns: 'app.utils',
+                        title: {
+                            literal: 'notification.backup.title'
+                        },
+                        body: {
+                            literal: 'notification.backup.body'
+                        },
+                        action: {
+                            literal: 'notification.backup.action',
+                            callback: () => {
+                                modalManager.showSeedBackupModal();
+                            }
+                        },
+                        onClose: () => {
+                            if (scope.closeByModal || user.getSetting('hasBackup')) {
+                                return null;
+                            }
+
+                            modalManager.openModal.off(changeModalsHandler);
+
+                            const stop = $rootScope.$on('$stateChangeSuccess', () => {
+                                stop();
+                                this._initializeBackupWarning();
+                            });
+                        }
+                    }, -1);
+                }
+            }
+
+            /**
              * @param {{name: string}} currentState
              * @return {Promise}
              * @private
              */
             _login(currentState) {
+                // const sessions = sessionBridge.getSessionsData();
 
                 const states = WavesApp.stateTree.where({ noLogin: true })
                     .map((item) => {
@@ -233,7 +292,11 @@
                             .join('.');
                     });
                 if (states.indexOf(currentState.name) === -1) {
+                    // if (sessions.length) {
+                    //     $state.go('sessions');
+                    // } else {
                     $state.go(states[0]);
+                    // }
                 }
                 return user.onLogin();
             }
@@ -241,6 +304,8 @@
             /**
              * @param {Event} event
              * @param {object} toState
+             * @param some
+             * @param fromState
              * @param {string} toState.name
              * @private
              */
@@ -316,10 +381,14 @@
             }
 
             static _getUrlFromState(state) {
-                return '/' + WavesApp.stateTree.getPath(state.name.split('.').slice(-1)[0])
-                    .filter((id) => !WavesApp.stateTree.find(id).get('abstract'))
-                    .map((id) => WavesApp.stateTree.find(id).get('url') || id)
-                    .join('/');
+                return (
+                    WavesApp
+                        .stateTree
+                        .getPath(state.name.split('.').slice(-1)[0])
+                        .filter((id) => !WavesApp.stateTree.find(id).get('abstract'))
+                        .map((id) => WavesApp.stateTree.find(id).get('url') || id)
+                        .reduce((url, id) => `${url}/${id}`, '')
+                );
             }
 
         }
@@ -327,7 +396,20 @@
         return new AppRun();
     };
 
-    run.$inject = ['$rootScope', 'utils', 'user', '$state', 'state', 'modalManager', 'storage'];
+    run.$inject = [
+        '$rootScope',
+        'utils',
+        'user',
+        '$state',
+        'state',
+        'modalManager',
+        'storage',
+        'notification',
+        'decorators',
+        'waves',
+        'ModalRouter',
+        'whatsNew'
+    ];
 
     angular.module('app')
         .run(run);

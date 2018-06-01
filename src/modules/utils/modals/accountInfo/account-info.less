@@ -11,8 +11,6 @@ md-dialog.account-info {
         display: flex;
         flex-direction: row;
         align-items: center;
-        height: 54px;
-        padding: 0 30px 0 15px;
       }
     }
 
@@ -60,6 +58,10 @@ md-dialog.account-info {
           border-right: 1px solid @color-basic-200;
           border-top: 1px solid @color-basic-200;
           border-bottom: none;
+
+          &:focus {
+            border: 1px solid @color-submit-400;
+          }
         }
 
         w-step-by-step:first-child input.new-alias {
